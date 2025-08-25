@@ -1,4 +1,39 @@
 import React, { useMemo, useState } from "react";
+import { supabase } from './supabase';
+
+function AuthGate({ children }) {
+  const [session, setSession] = React.useState(null);
+  const [email, setEmail] = React.useState('');
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  async function signIn() {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) alert(error.message);
+    else alert('Check your email for the sign-in link');
+  }
+
+  if (!session) {
+    return (
+      <div style={{ padding: 24, maxWidth: 420 }}>
+        <h2>Sign in to Bestway Jobs</h2>
+        <input
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e)=>setEmail(e.target.value)}
+          style={{ width:'100%', padding:10, border:'1px solid #ddd', borderRadius:8, margin:'8px 0' }}
+        />
+        <button onClick={signIn} style={{ padding:'8px 12px' }}>Send magic link</button>
+      </div>
+    );
+  }
+  return children;
+}
+
 
 /**
  * Sandbox‑friendly prototype: no external UI libraries, no icons, no fancy deps.
@@ -48,7 +83,7 @@ function timeBlocks() {
   return blocks;
 }
 
-export default function App() {
+function App() {
   const days = useWeek();
   const blocks = useMemo(() => timeBlocks(), []);
   const [jobs, setJobs] = useState([]); // {id, customerId, jobType, dayIdx, start, durationMin, crewId, area, sqft, thicknessIn, rValue, notes}
@@ -391,3 +426,11 @@ const labelStyle = { fontSize: 12, color: "#555", marginBottom: 4 };
 const estBox = { gridColumn: "1 / -1", background: "#f9fafb", border: "1px solid #eee", borderRadius: 12, padding: 10 };
 const modalBackdrop = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };
 const modal = { background: "#fff", borderRadius: 16, border: "1px solid #eee", padding: 16, width: 640, maxWidth: "95vw" };
+export default function AppWrapped() {
+  return (
+    <AuthGate>
+      <App />
+    </AuthGate>
+  );
+}
+
